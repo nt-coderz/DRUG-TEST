@@ -1,0 +1,11 @@
+{
+  "name": "ChromaEvidence — Field Drug-Test Evidence App",
+  "description": "Colorimetric field drug-test result capture, CIELAB/CIEDE2000 lighting-calibrated classification, and tamper-evident ECDSA-signed records.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

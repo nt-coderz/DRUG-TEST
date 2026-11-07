@@ -1,0 +1,142 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$');
+    }
+
+    function isValidUserProfile(data) {
+      let allowedKeys = [
+        'ownerUid',
+        'email',
+        'operatorId',
+        'name',
+        'unit',
+        'keyFingerprint',
+        'publicKeyJwkJson',
+        'createdAt',
+        'updatedAt'
+      ];
+      return data.keys().hasAll(allowedKeys)
+        && data.keys().hasOnly(allowedKeys)
+        && data.ownerUid is string
+        && data.ownerUid == request.auth.uid
+        && data.email is string
+        && data.email == request.auth.token.email
+        && data.email.size() >= 3
+        && data.email.size() <= 254
+        && data.operatorId is string
+        && data.operatorId.size() >= 1
+        && data.operatorId.size() <= 64
+        && data.name is string
+        && data.name.size() >= 1
+        && data.name.size() <= 120
+        && data.unit is string
+        && data.unit.size() >= 1
+        && data.unit.size() <= 160
+        && data.keyFingerprint is string
+        && data.keyFingerprint.size() == 64
+        && data.publicKeyJwkJson is string
+        && data.publicKeyJwkJson.size() >= 10
+        && data.publicKeyJwkJson.size() <= 2048
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidEvidenceRecord(data, recordId) {
+      let allowedKeys = [
+        'ownerUid',
+        'recordId',
+        'caseRef',
+        'kitId',
+        'kitName',
+        'effectiveResult',
+        'recordHash',
+        'previousRecordHash',
+        'imageSha256',
+        'operatorId',
+        'keyFingerprint',
+        'recordJson',
+        'capturedAtIso',
+        'createdAt'
+      ];
+      return data.keys().hasAll(allowedKeys)
+        && data.keys().hasOnly(allowedKeys)
+        && data.ownerUid is string
+        && data.ownerUid == request.auth.uid
+        && data.recordId is string
+        && data.recordId == recordId
+        && data.caseRef is string
+        && data.caseRef.size() >= 1
+        && data.caseRef.size() <= 120
+        && data.kitId is string
+        && data.kitId.size() >= 1
+        && data.kitId.size() <= 64
+        && data.kitName is string
+        && data.kitName.size() >= 1
+        && data.kitName.size() <= 120
+        && data.effectiveResult is string
+        && data.effectiveResult in ['POSITIVE', 'NEGATIVE', 'INCONCLUSIVE']
+        && data.recordHash is string
+        && data.recordHash.size() == 64
+        && data.previousRecordHash is string
+        && data.previousRecordHash.size() == 64
+        && data.imageSha256 is string
+        && data.imageSha256.size() == 64
+        && data.operatorId is string
+        && data.operatorId.size() >= 1
+        && data.operatorId.size() <= 64
+        && data.keyFingerprint is string
+        && data.keyFingerprint.size() == 64
+        && data.recordJson is string
+        && data.recordJson.size() >= 20
+        && data.recordJson.size() <= 100000
+        && data.capturedAtIso is string
+        && data.capturedAtIso.size() >= 10
+        && data.capturedAtIso.size() <= 64
+        && data.createdAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId && resource.data.ownerUid == request.auth.uid;
+      allow list: if isSignedIn() && isValidId(userId) && request.auth.uid == userId && resource.data.ownerUid == request.auth.uid;
+      allow create: if isSignedIn()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidUserProfile(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && resource.data.ownerUid == request.auth.uid
+        && isValidUserProfile(request.resource.data)
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /records/{recordId} {
+      allow get: if isSignedIn() && isValidId(recordId) && resource.data.ownerUid == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isSignedIn()
+        && isValidId(recordId)
+        && isValidEvidenceRecord(request.resource.data, recordId)
+        && request.resource.data.createdAt == request.time;
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}

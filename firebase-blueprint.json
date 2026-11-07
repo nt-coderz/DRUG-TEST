@@ -1,0 +1,155 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated operator profile and cryptographic signing identity metadata.",
+      "type": "object",
+      "properties": {
+        "ownerUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the operator owning this profile."
+        },
+        "email": {
+          "type": "string",
+          "description": "Verified email address of the operator."
+        },
+        "operatorId": {
+          "type": "string",
+          "description": "Badge or operator ID string (e.g., OP-4821)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name and rank of the operator."
+        },
+        "unit": {
+          "type": "string",
+          "description": "Assigned forensic or law enforcement unit/station."
+        },
+        "keyFingerprint": {
+          "type": "string",
+          "description": "64-hex SHA-256 fingerprint of the operator's ECDSA P-256 public key."
+        },
+        "publicKeyJwkJson": {
+          "type": "string",
+          "description": "Serialized JSON Web Key (JWK) of the operator's ECDSA P-256 public key."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the operator profile was first registered."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the operator profile was last updated."
+        }
+      },
+      "required": [
+        "ownerUid",
+        "email",
+        "operatorId",
+        "name",
+        "unit",
+        "keyFingerprint",
+        "publicKeyJwkJson",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "EvidenceRecord": {
+      "title": "EvidenceRecord",
+      "description": "Cloud-synced tamper-evident colorimetric field drug-test evidence record.",
+      "type": "object",
+      "properties": {
+        "ownerUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the operator who synced this record."
+        },
+        "recordId": {
+          "type": "string",
+          "description": "Unique record UUID."
+        },
+        "caseRef": {
+          "type": "string",
+          "description": "Case reference or seizure ID."
+        },
+        "kitId": {
+          "type": "string",
+          "description": "Reagent kit identifier."
+        },
+        "kitName": {
+          "type": "string",
+          "description": "Reagent kit display name."
+        },
+        "effectiveResult": {
+          "type": "string",
+          "enum": ["POSITIVE", "NEGATIVE", "INCONCLUSIVE"],
+          "description": "Presumptive classification outcome."
+        },
+        "recordHash": {
+          "type": "string",
+          "description": "64-hex SHA-256 canonical record hash."
+        },
+        "previousRecordHash": {
+          "type": "string",
+          "description": "64-hex SHA-256 hash of the preceding record in the chain."
+        },
+        "imageSha256": {
+          "type": "string",
+          "description": "64-hex SHA-256 hash of the original untouched camera image bytes."
+        },
+        "operatorId": {
+          "type": "string",
+          "description": "Operator badge ID."
+        },
+        "keyFingerprint": {
+          "type": "string",
+          "description": "64-hex SHA-256 fingerprint of the signing public key."
+        },
+        "recordJson": {
+          "type": "string",
+          "description": "Canonical JSON string of the complete SignedTestRecord (excluding binary Blobs)."
+        },
+        "capturedAtIso": {
+          "type": "string",
+          "description": "ISO-8601 UTC timestamp when the field capture occurred."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Firestore server timestamp when the record was synced."
+        }
+      },
+      "required": [
+        "ownerUid",
+        "recordId",
+        "caseRef",
+        "kitId",
+        "kitName",
+        "effectiveResult",
+        "recordHash",
+        "previousRecordHash",
+        "imageSha256",
+        "operatorId",
+        "keyFingerprint",
+        "recordJson",
+        "capturedAtIso",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Authenticated operator profiles keyed by Firebase Auth UID."
+    },
+    "/records/{recordId}": {
+      "schema": {
+        "$ref": "#/entities/EvidenceRecord"
+      },
+      "description": "Append-only cloud-synced signed field-test evidence records."
+    }
+  }
+}
