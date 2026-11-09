@@ -10,16 +10,25 @@
 
 import dotenv from 'dotenv';
 import express from 'express';
+import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = 3000;
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception in server:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection in server:', reason);
+});
 
 function getGenAIClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -48,7 +57,13 @@ interface ChatTurnInput {
 
 async function startServer() {
   const app = express();
+  const httpServer = http.createServer(app);
   app.use(express.json({ limit: '2mb' }));
+
+  // Healthcheck endpoint for pre-warming probes
+  app.get('/api/health', (_req, res) => {
+    res.status(200).json({ status: 'ok' });
+  });
 
   // 1. Multi-Turn Gemini Chatbot Endpoint
   app.post('/api/gemini/chat', async (req, res) => {
@@ -103,7 +118,6 @@ async function startServer() {
           fallbackNotice,
         });
       } catch (innerErr) {
-        // If user selected gemini-4-argon without a paid key, gracefully fallback to gemini-3.8-flash
         if (selectedModel === 'gemini-4-argon') {
           activeModelUsed = 'gemini-3.8-flash';
           fallbackNotice =
@@ -188,7 +202,6 @@ async function startServer() {
   });
 
   // 3. Google Maps Grounding Endpoint (gemini-3.8-flash + googleMaps tool)
-  // NOTE: Per gemini-api skill, responseMimeType and responseSchema are NOT supported with googleMaps grounding.
   app.post('/api/gemini/maps-grounding', async (req, res) => {
     try {
       const { query, lat, lng } = req.body as {
@@ -287,7 +300,14 @@ async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr:
+          process.env.DISABLE_HMR === 'true'
+            ? false
+            : { server: httpServer },
+        watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
@@ -299,7 +319,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`ChromaEvidence server listening on http://0.0.0.0:${PORT}`);
   });
 }
